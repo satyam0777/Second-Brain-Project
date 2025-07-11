@@ -1,0 +1,12 @@
+import Activity from '../models/activity.js';
+
+const logActivity = async (userId, type, description, resourceId = null) => {
+  try {
+    const activity = new Activity({ user: userId, type, description, resourceId });
+    await activity.save();
+  } catch (err) {
+    console.error('Activity log failed:', err);
+  }
+};
+
+export default logActivity;
