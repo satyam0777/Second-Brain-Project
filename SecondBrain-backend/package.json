@@ -1,5 +1,5 @@
 {
-  "name": "auth-full-backend",
+  "name": "SecondBrain-backend",
   "version": "1.0.0",
   "description": "SecondBrain Backend with Auth, Notes, Bookmarks, Comments, Dashboard, and Search",
   "main": "server.js",
