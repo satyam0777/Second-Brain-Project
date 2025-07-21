@@ -1,6 +1,6 @@
-
-import express from 'express';
 import dotenv from 'dotenv';
+import express from 'express';
+
 import cors from 'cors';
 import connectDB from './config/db.js';
 
@@ -14,6 +14,7 @@ import commentRoutes from './routes/commentRoutes.js';
 import activityRoutes from './routes/activityRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+// import analyticRoutes from './routes/analyticRoutes.js'
 
 dotenv.config();
 
@@ -24,19 +25,20 @@ connectDB();
 
 // Middleware
 app.use(cors());
+
 app.use(express.json());
 
 //debug 
-const originalUse = app.use;
-app.use = function(path, ...args) {
-    console.log('Mounting route:', path);
-    try {
-        return originalUse.call(this, path, ...args);
-    } catch (error) {
-        console.log('Error mounting route:', path);
-        throw error;
-    }
-};
+// const originalUse = app.use;
+// app.use = function(path, ...args) {
+//     console.log('Mounting route:', path);
+//     try {
+//         return originalUse.call(this, path, ...args);
+//     } catch (error) {
+//         console.log('Error mounting route:', path);
+//         throw error;
+//     }
+// };
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -46,7 +48,7 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-
+// app.use('/api/analytics',analyticRoutes);
 
 
 // Health Check
