@@ -94,6 +94,16 @@ function About() {
               <span className="text-xl font-bold">𝕏</span> <span>Twitter</span>
 
             </a>
+
+            <a
+  href="https://portfolio-rosy-tau-rws7s0np3k.vercel.app/"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="flex items-center space-x-2 text-blue-400 hover:underline"
+>
+  <span className="text-xl font-bold">🌐</span> <span>Portfolio</span>
+</a>
+
             <a
   href="mailto:officialsatyam0777@gmail.com"
   target="_blank"
