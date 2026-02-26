@@ -16,6 +16,7 @@ import SingleBookmark from "./pages/SingleBookmark";
 
 import BookmarkDetails from "./pages/BookmarkDetails";
 import Comments from "./pages/Comments";
+import Favorites from "./pages/Favorites";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
     <Route path="/bookmarks/:id" element={<SingleBookmark />} />
     <Route path="/bookmarks/:id" element={<BookmarkDetails />} />
     <Route path="/comments" element={<Comments />} />
+    <Route path="/favorites" element={<Favorites />} />
 
 
     </Routes>

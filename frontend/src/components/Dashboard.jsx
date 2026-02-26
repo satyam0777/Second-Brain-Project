@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, LogOut, Plus, BookOpen, MessageSquare, Link, Search, Settings, Bell, User, TrendingUp, Zap, Star, Clock, BarChart3, Activity, TruckElectricIcon } from "lucide-react";
 import { fetchUserProfile } from "../api/user";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Link as RouterLink } from "react-router-dom";
 
 // Animated Background Component
@@ -46,12 +46,13 @@ const AnimatedBackground = () => {
 };
 
 // Stat Card Component
-const StatCard = ({ icon: Icon, title, value, color, trend, delay }) => (
+const StatCard = ({ icon: Icon, title, value, color, trend, delay, onClick }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay }}
-    className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-all group"
+    onClick={onClick}
+    className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-all group cursor-pointer"
     whileHover={{ scale: 1.02, y: -5 }}
   >
     <div className="flex items-center justify-between">
@@ -120,9 +121,11 @@ function Dashboard() {
   
   const [notes, setNotes] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
- const [bookmarks, setBookmarks] = useState([]);
-const [commentCount, setCommentCount] = useState(0);
+  const [bookmarks, setBookmarks] = useState([]);
+  const [commentCount, setCommentCount] = useState(0);
+  const [favorites, setFavorites] = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
 
 
 
@@ -178,6 +181,11 @@ useEffect(() => {
     const notesData = await getNotes();
     const bookmarksData = await fetchBookmarks();
 
+    // Count favorites from notes and bookmarks
+    const favoriteNotesCount = notesData.filter(note => note.isFavorite).length;
+    const favoriteBookmarksCount = bookmarksData.filter(bookmark => bookmark.isFavorite).length;
+    setFavorites({ length: favoriteNotesCount + favoriteBookmarksCount });
+
     // Build recent activity from notes
     const noteActivities = notesData.map((note) => ({
       id: note._id,
@@ -200,34 +208,53 @@ useEffect(() => {
       link: `/bookmarks/${bookmark._id}`,
     }));
 
-    // Combine and sort by time (latest first)
-    const allActivities = [...noteActivities, ...bookmarkActivities].sort(
-      (a, b) => new Date(b.time) - new Date(a.time)
-    );
+    // Fetch comments for recent activity
+    try {
+      const commentsRes = await axios.get("/comments");
+      const commentActivities = commentsRes.data.slice(0, 5).map((comment) => ({
+        id: comment._id,
+        icon: "💬",
+        title: `Commented: ${comment.text.substring(0, 30)}${comment.text.length > 30 ? '...' : ''}`,
+        time: new Date(comment.createdAt).toLocaleString(),
+        color: "bg-green-600 hover:bg-green-700 text-white",
+        type: "comment_posted",
+        link: `/bookmarks/${comment.referenceId}`,
+      }));
+      
+      // Combine and sort by time (latest first)
+      const allActivities = [...noteActivities, ...bookmarkActivities, ...commentActivities].sort(
+        (a, b) => new Date(b.time) - new Date(a.time)
+      );
 
-    setRecentActivities(allActivities);
+      setRecentActivities(allActivities.slice(0, 10)); // Show only latest 10
+    } catch (err) {
+      console.error("Failed to fetch comments for activity:", err);
+      // Fallback: just show notes and bookmarks
+      const allActivities = [...noteActivities, ...bookmarkActivities].sort(
+        (a, b) => new Date(b.time) - new Date(a.time)
+      );
+      setRecentActivities(allActivities);
+    }
   };
  
     const fetchComments = async () => {
       try {
-        const res = await axios.get("/api/comments", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // or from context
-          },
-        });
+        const res = await axios.get("/comments");
         setCommentCount(res.data.length);
       } catch (error) {
         console.error("Failed to fetch comments:", error);
+        setCommentCount(0);
       }
     };
 
      const fetchFavorites = async () => {
-    const res = await axios.get("/api/favorites");
-    setFavorites(res.data);
-  };
+      // Favorites count is already calculated in fetchAllData
+      // This function is kept for compatibility
+    };
   fetchFavorites();
-
-    fetchComments();
+  fetchComments();
+  fetchAllData();
+  getUser();
 
   fetchAllData();
   getUser();
@@ -245,14 +272,14 @@ useEffect(() => {
 
   const stats = [
    
-    { icon: BookOpen, title: "Notes", value: notes.length, color: "bg-purple-500", trend: 12 },
+    { icon: BookOpen, title: "Notes", value: notes.length, color: "bg-purple-500", trend: 12, onClick: () => navigate("/add-note") },
 
     
-      { icon: Link, title: "Bookmarks", value: bookmarks.length, color: "bg-blue-500", trend: 8 },
+      { icon: Link, title: "Bookmarks", value: bookmarks.length, color: "bg-blue-500", trend: 8, onClick: () => navigate("/bookmarks") },
    
-     { icon: MessageSquare, title: "Comments", value: commentCount, color: "bg-green-500", trend: 25 },
+     { icon: MessageSquare, title: "Comments", value: commentCount, color: "bg-green-500", trend: 25, onClick: () => navigate("/comments") },
     
-    { icon: Star, title: "Favorites", value: "8", color: "bg-yellow-500", trend: 5 },
+    { icon: Star, title: "Favorites", value: favorites.length, color: "bg-yellow-500", trend: 5, onClick: () => navigate("/favorites") },
      
   ];
 
@@ -262,6 +289,9 @@ const quickActions = [
   { icon: Link, label: "Add Bookmark", path: "/add-bookmark", color: "bg-blue-500 hover:bg-blue-600 text-white" },
   { icon: Search, label: "Search", path: "/search", color: "bg-gray-700 hover:bg-gray-600 text-white" },
   { icon: BarChart3, label: "Analytics", path: "/analytics", color: "bg-green-500 hover:bg-green-600 text-white" },
+  { icon: BookOpen, label: "View Bookmarks", path: "/bookmarks", color: "bg-indigo-500 hover:bg-indigo-600 text-white" },
+  { icon: Star, label: "Favorites", path: "/favorites", color: "bg-yellow-500 hover:bg-yellow-600 text-white" },
+  { icon: MessageSquare, label: "Comments", path: "/comments", color: "bg-green-500 hover:bg-green-600 text-white" },
 ];
 
 
@@ -427,7 +457,7 @@ const quickActions = [
             <Zap className="h-5 w-5 mr-2 text-yellow-400" />
             Quick Actions
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
             {quickActions.map((action, index) => (
               <QuickActionButton
                 key={action.label}
@@ -463,6 +493,7 @@ const quickActions = [
                 color={stat.color}
                 trend={stat.trend}
                 delay={0.5 + index * 0.1}
+                onClick={stat.onClick}
               />
             ))}
           </div>

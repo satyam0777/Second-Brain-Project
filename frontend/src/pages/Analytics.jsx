@@ -1,19 +1,6 @@
-// // import React from "react";
-
-// // const Analytics = () => {
-// //   return (
-// //     <div className="min-h-screen bg-slate-900 text-white p-10">
-// //       <h1 className="text-2xl font-bold mb-6">📊 Analytics</h1>
-// //       <p className="text-gray-400">Coming soon! You can use chart libraries like Chart.js or Recharts.</p>
-// //     </div>
-// //   );
-// // };
-
-// // export default Analytics;
-
-
-
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   BarChart,
   Bar,
@@ -26,40 +13,46 @@ import {
   PieChart,
   Pie,
   Cell,
+  CartesianGrid,
+  Legend,
 } from "recharts";
+import { 
+  TrendingUp, 
+  BookOpen, 
+  Bookmark as BookmarkIcon, 
+  MessageSquare, 
+  Star,
+  Activity as ActivityIcon,
+  Calendar,
+  ArrowLeft,
+  Brain,
+  Target,
+  Zap
+} from "lucide-react";
+import API from "../api/axios";
 
 const Analytics = () => {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState('overview');
-  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-  // Colors for different chart types
-  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+  // Colors for charts
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
 
   const fetchAnalytics = async (type = 'overview') => {
     setLoading(true);
-    setError(null);
     try {
-      // Replace with your actual backend URL
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-      const res = await fetch(`${BACKEND_URL}/api/analytics?type=${type}`);
+      const [analyticsRes, statsRes] = await Promise.all([
+        API.get(`/analytics?type=${type}`),
+        API.get('/analytics/stats')
+      ]);
       
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      
-      const result = await res.json();
-      
-      if (Array.isArray(result)) {
-        setData(result);
-      } else {
-        console.error("Data is not an array:", result);
-        setData([]);
-      }
+      setData(analyticsRes.data || []);
+      setStats(statsRes.data);
     } catch (err) {
       console.error("Failed to fetch analytics:", err);
-      setError(err.message);
       setData([]);
     } finally {
       setLoading(false);
@@ -70,48 +63,81 @@ const Analytics = () => {
     fetchAnalytics(activeView);
   }, [activeView]);
 
+  const StatCard = ({ icon: Icon, title, value, color, trend }) => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-all"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-3 rounded-lg ${color}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        {trend && (
+          <div className="flex items-center text-green-400 text-sm">
+            <TrendingUp className="w-4 h-4 mr-1" />
+            <span>+{trend}%</span>
+          </div>
+        )}
+      </div>
+      <h3 className="text-2xl font-bold text-white mb-1">{value}</h3>
+      <p className="text-gray-400 text-sm">{title}</p>
+    </motion.div>
+  );
+
   const renderChart = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex flex-col items-center justify-center h-64">
-          {/* <p className="text-red-400 mb-4">Error: {error}</p> */}
-          <p className="text-red-400 mb-4">Comming Soon.....</p>
-          <button 
-            onClick={() => fetchAnalytics(activeView)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-          >
-            UnderWork
-          </button>
+        <div className="flex items-center justify-center h-80">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
+          />
         </div>
       );
     }
 
     if (data.length === 0) {
-      return <p className="text-gray-400 text-center py-8">No data available</p>;
+      return (
+        <div className="flex flex-col items-center justify-center h-80">
+          <Brain className="w-16 h-16 text-gray-600 mb-4" />
+          <p className="text-gray-400 text-lg">No data available yet</p>
+          <p className="text-gray-500 text-sm mt-2">Start creating notes and bookmarks to see analytics</p>
+        </div>
+      );
     }
+
+    const CustomTooltip = ({ active, payload }) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="bg-slate-800 border border-white/10 rounded-lg p-3 shadow-xl">
+            <p className="text-white font-semibold">{payload[0].payload.name}</p>
+            <p className="text-blue-400">{payload[0].value} items</p>
+          </div>
+        );
+      }
+      return null;
+    };
 
     switch (activeView) {
       case 'activity':
         return (
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={400}>
             <LineChart data={data}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="name" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
               <Line 
                 type="monotone" 
                 dataKey="value" 
                 stroke="#3b82f6" 
                 strokeWidth={3}
-                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 5 }}
+                activeDot={{ r: 7 }}
+                name="Activities"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -119,110 +145,253 @@ const Analytics = () => {
         
       case 'tags':
         return (
-          <div className="space-y-6">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data} layout="horizontal">
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="name" width={100} />
-                <Tooltip />
-                <Bar dataKey="value" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="name" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'categories':
+      case 'bookmarks':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="name" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         );
         
       default:
         return (
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={data}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#9ca3af" />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         );
     }
   };
 
   const getViewTitle = () => {
-    switch (activeView) {
-      case 'categories': return '📂 Notes by Category';
-      case 'bookmarks': return '🔖 Bookmarks by Category';
-      case 'activity': return '📈 Activity Over Time';
-      case 'tags': return '🏷️ Popular Tags';
-      case 'overview': return '📊 Overview Statistics';
-      default: return '📊 Analytics';
-    }
+    const titles = {
+      'overview': 'Overview Statistics',
+      'categories': 'Notes by Tag',
+      'bookmarks': 'Bookmarks by Tag',
+      'activity': 'Activity Over Time (Last 7 Days)',
+      'tags': 'Most Popular Tags'
+    };
+    return titles[activeView] || 'Analytics';
+  };
+
+  const getViewIcon = () => {
+    const icons = {
+      'overview': Target,
+      'categories': BookOpen,
+      'bookmarks': BookmarkIcon,
+      'activity': TrendingUp,
+      'tags': Star
+    };
+    const Icon = icons[activeView] || Target;
+    return <Icon className="w-6 h-6" />;
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">📊 Analytics Dashboard</h1>
-        
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 mb-8 bg-slate-800 p-2 rounded-lg">
-          {[
-            { key: 'overview', label: 'Overview' },
-            { key: 'categories', label: 'Notes Categories' },
-            { key: 'bookmarks', label: 'Bookmarks' },
-            { key: 'activity', label: 'Activity' },
-            { key: 'tags', label: 'Tags' },
-          ].map((tab) => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
+      {/* Navigation */}
+      <nav className="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div className="flex items-center space-x-2">
+              <Brain className="h-6 w-6 text-purple-400" />
+              <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
+                SecondBrain Analytics
+              </span>
+            </div>
             <button
-              key={tab.key}
-              onClick={() => setActiveView(tab.key)}
-              className={`px-4 py-2 rounded-md transition-colors ${
-                activeView === tab.key
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-slate-700 hover:text-white'
-              }`}
+              onClick={() => navigate("/dashboard")}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
             >
-              {tab.label}
+              <ArrowLeft className="w-4 h-4" />
+              Back
             </button>
-          ))}
+          </div>
         </div>
+      </nav>
 
-        {/* Chart Container */}
-        <div className="bg-slate-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-6">{getViewTitle()}</h2>
-          {renderChart()}
-        </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl font-bold mb-2">📊 Analytics Dashboard</h1>
+          <p className="text-gray-400">
+            Insights into your knowledge management and productivity
+          </p>
+        </motion.div>
 
-        {/* Quick Stats */}
-        {activeView === 'overview' && !loading && data.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            {data.map((stat, index) => (
-              <div key={stat.name} className="bg-slate-800 rounded-lg p-6 text-center">
-                <div 
-                  className="text-3xl font-bold mb-2"
-                  style={{ color: colors[index % colors.length] }}
-                >
-                  {stat.value}
-                </div>
-                <div className="text-gray-400">{stat.name}</div>
-              </div>
-            ))}
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard
+              icon={BookOpen}
+              title="Total Notes"
+              value={stats.totalNotes}
+              color="bg-purple-500"
+              trend={12}
+            />
+            <StatCard
+              icon={BookmarkIcon}
+              title="Total Bookmarks"
+              value={stats.totalBookmarks}
+              color="bg-blue-500"
+              trend={8}
+            />
+            <StatCard
+              icon={MessageSquare}
+              title="Total Comments"
+              value={stats.totalComments}
+              color="bg-green-500"
+              trend={25}
+            />
+            <StatCard
+              icon={Star}
+              title="Favorites"
+              value={stats.totalFavorites}
+              color="bg-yellow-500"
+              trend={15}
+            />
           </div>
         )}
+
+        {/* Tab Navigation */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-6"
+        >
+          <div className="flex flex-wrap gap-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-2">
+            {[
+              { key: 'overview', label: 'Overview', icon: Target },
+              { key: 'categories', label: 'Notes', icon: BookOpen },
+              { key: 'bookmarks', label: 'Bookmarks', icon: BookmarkIcon },
+              { key: 'activity', label: 'Activity', icon: ActivityIcon },
+              { key: 'tags', label: 'Tags', icon: Star },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveView(tab.key)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    activeView === tab.key
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Chart Container */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-8"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            {getViewIcon()}
+            <h2 className="text-xl font-semibold">{getViewTitle()}</h2>
+          </div>
+          {renderChart()}
+        </motion.div>
 
         {/* Data Summary */}
         {!loading && data.length > 0 && (
-          <div className="mt-8 bg-slate-800 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-3">Data Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-400">
-              <div>Total Items: {data.length}</div>
-              <div>
-                Max Value: {Math.max(...data.map(d => d.value))}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          >
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                <h3 className="text-lg font-semibold">Total Items</h3>
               </div>
-              <div>
-                Average: {(data.reduce((sum, d) => sum + d.value, 0) / data.length).toFixed(1)}
-              </div>
+              <p className="text-3xl font-bold text-purple-400">{data.length}</p>
             </div>
-          </div>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <TrendingUp className="w-5 h-5 text-green-400" />
+                <h3 className="text-lg font-semibold">Highest Value</h3>
+              </div>
+              <p className="text-3xl font-bold text-green-400">
+                {Math.max(...data.map(d => d.value))}
+              </p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Calendar className="w-5 h-5 text-blue-400" />
+                <h3 className="text-lg font-semibold">Average</h3>
+              </div>
+              <p className="text-3xl font-bold text-blue-400">
+                {(data.reduce((sum, d) => sum + d.value, 0) / data.length).toFixed(1)}
+              </p>
+            </div>
+          </motion.div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

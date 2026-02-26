@@ -2,13 +2,17 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Edit, Trash2, Globe, Calendar } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Globe, Calendar, Star, MessageSquare, Send } from "lucide-react";
 import axios from "../api/axios";
 
 const SingleBookmark = () => {
   const { id } = useParams();
   const [bookmark, setBookmark] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,13 +26,13 @@ const SingleBookmark = () => {
       }
 
       try {
-        const res = await axios.get(`/bookmarks/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        // console.log("✅ Bookmark fetched:", res.data);
+        const res = await axios.get(`/bookmarks/${id}`);
+        console.log("✅ Bookmark fetched:", res.data);
         setBookmark(res.data);
+        setIsFavorite(res.data.isFavorite || false);
+        
+        // Fetch comments for this bookmark
+        fetchComments();
       } catch (err) {
         console.error("❌ Error fetching bookmark:", err.response?.data || err.message);
         setBookmark(null);
@@ -40,20 +44,67 @@ const SingleBookmark = () => {
     fetchBookmark();
   }, [id]);
 
+  const fetchComments = async () => {
+    try {
+      const res = await axios.get(`/comments/${id}`);
+      console.log("Comments fetched:", res.data);
+      setComments(res.data);
+    } catch (err) {
+      console.error("Error fetching comments:", err.response?.data || err.message);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    
+    setSubmittingComment(true);
+    try {
+      const res = await axios.post(`/comments`, {
+        text: newComment,
+        referenceId: id,
+        referenceType: "bookmark",
+      });
+      console.log("Comment created:", res.data);
+      setComments([...comments, res.data]);
+      setNewComment("");
+    } catch (err) {
+      console.error("Error adding comment:", err.response?.data || err.message);
+      alert(err.response?.data?.error || "Failed to add comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this bookmark?")) {
       try {
-        const token = localStorage.getItem("token");
-        await axios.delete(`/bookmarks/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        await axios.delete(`/bookmarks/${id}`);
         navigate("/dashboard");
       } catch (err) {
         console.error("Error deleting bookmark:", err.response?.data || err.message);
         alert("Failed to delete bookmark");
       }
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    const newFavoriteState = !isFavorite;
+    console.log("Toggling favorite from", isFavorite, "to", newFavoriteState);
+    
+    // Optimistically update UI
+    setIsFavorite(newFavoriteState);
+    
+    try {
+      const res = await axios.put(`/bookmarks/${id}`, { isFavorite: newFavoriteState });
+      console.log("Favorite toggled successfully:", res.data);
+      // Confirm with server response
+      setIsFavorite(res.data.isFavorite);
+      setBookmark({ ...bookmark, isFavorite: res.data.isFavorite });
+    } catch (err) {
+      console.error("Error toggling favorite:", err.response?.data || err.message);
+      // Revert on error
+      setIsFavorite(!newFavoriteState);
+      alert(err.response?.data?.error || "Failed to update favorite status");
     }
   };
 
@@ -121,6 +172,21 @@ const SingleBookmark = () => {
             </div>
             <div className="flex items-center space-x-2">
               <button
+                onClick={handleToggleFavorite}
+                className={`p-2 rounded transition-all ${
+                  isFavorite 
+                    ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                }`}
+                title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Star 
+                  className={`w-5 h-5 transition-all ${
+                    isFavorite ? 'fill-white text-white' : 'text-gray-300'
+                  }`} 
+                />
+              </button>
+              <button
                 onClick={() => alert("Edit functionality coming soon")}
                 className="p-2 bg-blue-600 hover:bg-blue-700 rounded"
                 title="Edit"
@@ -167,6 +233,68 @@ const SingleBookmark = () => {
 
           <div className="mt-6 text-gray-400 text-xs flex justify-between">
             <span>Updated: {new Date(bookmark.updatedAt || bookmark.createdAt).toLocaleString()}</span>
+          </div>
+        </motion.div>
+
+        {/* Comments Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mt-6"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare className="w-5 h-5 text-green-400" />
+            <h2 className="text-xl font-semibold">Comments ({comments.length})</h2>
+          </div>
+
+          {/* Add Comment Form */}
+          <div className="mb-6">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Add a comment..."
+              className="w-full px-4 py-3 bg-slate-800/50 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              rows="3"
+            />
+            <button
+              onClick={handleAddComment}
+              disabled={submittingComment || !newComment.trim()}
+              className="mt-2 flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              {submittingComment ? "Posting..." : "Post Comment"}
+            </button>
+          </div>
+
+          {/* Comments List */}
+          <div className="space-y-4">
+            {comments.length === 0 ? (
+              <p className="text-gray-400 text-center py-4">No comments yet. Be the first to comment!</p>
+            ) : (
+              comments.map((comment) => (
+                <div
+                  key={comment._id}
+                  className="bg-slate-800/40 border border-white/10 rounded-lg p-4"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm font-medium text-purple-300">
+                      {comment.user?.name || "Anonymous"}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {new Date(comment.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-200">{comment.text}</p>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
       </main>

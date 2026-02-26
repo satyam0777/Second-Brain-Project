@@ -44,8 +44,9 @@ const BookmarkDetail = () => {
     if (!newComment.trim()) return;
     try {
       const res = await axiosInstance.post("/comments", {
-        content: newComment,
+        text: newComment,
         referenceId: id,
+        referenceType: 'bookmark'
       });
       setComments((prev) => [...prev, res.data]);
       setNewComment("");
@@ -70,7 +71,7 @@ const BookmarkDetail = () => {
         <h3>💬 Comments</h3>
         {comments.map((comment, idx) => (
           <div key={idx} style={{ background: "#f0f0f0", padding: "10px", margin: "10px 0", borderRadius: "8px" }}>
-            <p>{comment.content}</p>
+            <p>{comment.text}</p>
             <small>Posted on {new Date(comment.createdAt).toLocaleString()}</small>
           </div>
         ))}
