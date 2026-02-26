@@ -1,13 +1,15 @@
 
 import authenticateToken from '../middleware/authMiddleware.js';
+import { validateComment } from '../middleware/validateMiddleware.js';
 
 import express from 'express';
-import { getComments, createComment } from '../controllers/commentController.js';
-// import auth from '../middleware/auth.js';
+import { getComments, createComment, getAllUserComments } from '../controllers/commentController.js';
+
 
 const router = express.Router();
 
-router.get('/:referenceId', authenticateToken, getComments);      // GET /api/comments/:referenceId
-router.post('/', authenticateToken, createComment);               // POST /api/comments
+router.get('/', authenticateToken, getAllUserComments);
+router.get('/:referenceId', authenticateToken, getComments);      
+router.post('/', authenticateToken, validateComment, createComment);               
 
 export default router;

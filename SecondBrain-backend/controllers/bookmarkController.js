@@ -25,22 +25,7 @@ export const getBookmarkById = async (req, res) => {
   }
 };
 
-// Get a single bookmark by ID
-export const getSingleBookmark = async (req, res) => {
-  try {
-    const bookmark = await Bookmark.findOne({ _id: req.params.id, user: req.user._id });
-    if (!bookmark) return res.status(404).json({ error: 'Bookmark not found' });
 
-  if (bookmark.user.toString() !== req.user.userId) {
-    return res.status(403).json({ message: 'Forbidden' });
-  }
-
-  res.json(bookmark);
-  } catch (err) {
-    console.error("Error fetching single bookmark:", err);
-    res.status(500).json({ error: 'Failed to fetch bookmark' });
-  }
-};
 
 
 export const createBookmark = async (req, res) => {
@@ -61,14 +46,16 @@ export const createBookmark = async (req, res) => {
 //updateBookmark
 export const updateBookmark = async (req, res) => {
   try {
+    const updateData = { ...req.body, updatedAt: Date.now() };
     const bookmark = await Bookmark.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
-      req.body,
+      updateData,
       { new: true }
     );
     if (!bookmark) return res.status(404).json({ error: 'Bookmark not found' });
     res.json(bookmark);
-  } catch {
+  } catch (err) {
+    console.error('Update bookmark error:', err);
     res.status(500).json({ error: 'Failed to update bookmark' });
   }
 };

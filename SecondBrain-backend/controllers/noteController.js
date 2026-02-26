@@ -43,14 +43,16 @@ export const createNote = async (req, res) => {
 //updatenote
 export const updateNote = async (req, res) => {
   try {
+    const updateData = { ...req.body, updatedAt: Date.now() };
     const note = await Note.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
-      req.body,
+      updateData,
       { new: true }
     );
     if (!note) return res.status(404).json({ error: 'Note not found' });
     res.json(note);
-  } catch {
+  } catch (err) {
+    console.error('Update note error:', err);
     res.status(500).json({ error: 'Failed to update note' });
   }
 };

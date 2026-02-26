@@ -5,8 +5,8 @@ import { searchAll } from '../controllers/searchController.js';
 
 const searchRouter = express.Router();
 
-// searchRouter.get('/', authenticateToken, searchAll);/
-searchRouter.get('/', searchAll);
+
+searchRouter.get('/', authenticateToken, searchAll);
 
 
 export default searchRouter;

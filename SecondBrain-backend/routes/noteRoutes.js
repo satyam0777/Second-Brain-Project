@@ -1,6 +1,7 @@
-// === /routes/noteRoutes.js ===
+
 import express from 'express';
 import authenticateToken from '../middleware/authMiddleware.js';
+import { validateNote } from '../middleware/validateMiddleware.js';
 import {
   getNotes,
   createNote,
@@ -14,15 +15,8 @@ const router = express.Router();
 
 
 router.get('/', authenticateToken, getNotes);
-router.post('/', authenticateToken, createNote);
-router.put('/:id', authenticateToken, updateNote);     
-router.delete('/:id', authenticateToken, deleteNote);  
+router.post('/', authenticateToken, validateNote, createNote);
 router.get('/:id', authenticateToken, getSingleNote);
-
-router.get('/:id', authenticateToken, (req, res) => {
-  if (!req.params.id || req.params.id === 'undefined') {
-    return res.status(400).json({ error: 'Note ID is required' });
-  }
-  getSingleNote(req, res);
-});
+router.put('/:id', authenticateToken, updateNote);     
+router.delete('/:id', authenticateToken, deleteNote);
 export default router;

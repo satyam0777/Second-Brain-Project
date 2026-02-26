@@ -1,13 +1,13 @@
-// routes/favoriteRoutes.js
+
 import express from "express";
 import { getFavorites, addFavorite, removeFavorite } from "../controllers/favoriteController.js";
-import requireAuth from "../middlewares/requireAuth.js";
+import authenticateToken from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-router.use(requireAuth);
+router.use(authenticateToken);
 
 router.get("/", getFavorites);
 router.post("/", addFavorite);
-router.delete("/:itemId", removeFavorite);
+router.delete("/:id", removeFavorite);
 
 export default router;

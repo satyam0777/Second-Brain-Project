@@ -14,7 +14,8 @@ import commentRoutes from './routes/commentRoutes.js';
 import activityRoutes from './routes/activityRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
-// import analyticRoutes from './routes/analyticRoutes.js'
+import favoriteRoutes from './routes/favoriteRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 
 dotenv.config();
 
@@ -48,7 +49,8 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-// app.use('/api/analytics',analyticRoutes);
+app.use('/api/favorites', favoriteRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 
 // Health Check
